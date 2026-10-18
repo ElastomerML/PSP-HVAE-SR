@@ -1,0 +1,252 @@
+============================================================================================
+Hierarchical gated VAE + symbolic interpretability report: hardness_ha
+============================================================================================
+
+1. Unified multilevel mechanism
+   X_process -> H_process -> H_mixing -> H_curing -> Z -> Y
+   H_mixing = E_mixing(X_mixing) + alpha_PM * G_PM(H_process)
+   H_curing = E_curing(X_curing) + alpha_MC * G_MC(H_process,H_mixing)
+   Z is a latent process-structure proxy, not a directly measured microstructure.
+
+2. Input variables
+   Fixed process variables: mix_speed_stage1, mix_speed_stage2, mix_time, mix_temp, cure_temp, cure_time_offset, cure_pressure
+   Selected mixing variables: mix_TM1_d2_std, mix_Tq_platform_cv, mix_Tq_stage1_initial_std
+   Selected curing variables: cure_early_crosslink_cv, cure_tan_delta_end, eng_t90_over_cure_time
+
+3. Outer-CV prediction metrics
+   ExtraTrees: R2=0.8301 ± 0.1090; MAE=1.9719; RMSE=2.8140
+   Backbone weak symbolic auxiliary: R2=0.0297 ± 0.0376; MAE=6.0641; RMSE=6.9972
+   Adaptive-gated Masked-VAE head: R2=0.8077 ± 0.1127; MAE=2.1466; RMSE=2.9885
+   2-D frozen Hybrid-SR: R2=0.7566 ± 0.1320; MAE=2.5444; RMSE=3.3923
+   Latent linear auxiliary: R2=0.6395 ± 0.1655; MAE=3.2561; RMSE=4.1381
+   Latent-SR: R2=0.7708 ± 0.1334; MAE=2.4304; RMSE=3.2721
+   Backbone level linear auxiliary: R2=0.1979 ± 0.1819; MAE=5.5034; RMSE=6.3348
+   2-D frozen Level-SR: R2=0.7404 ± 0.1667; MAE=2.5886; RMSE=3.4663
+   Uncertainty-gated Safe Linked-SR: R2=0.6868 ± 0.2457; MAE=2.8095; RMSE=3.7530
+   Conservative VAE-SR blend: R2=0.7933 ± 0.1529; MAE=2.2039; RMSE=3.0618
+   XGBoost: R2=0.8071 ± 0.1219; MAE=2.0314; RMSE=2.9703
+
+4. Training safeguards and selected schedule
+   Every phase has an independent validation monitor and best-state restore.
+   Joint/fine-tuning is selected by internal validation prediction RMSE.
+   Fine-tuning freezes the decoders; final outer models are refit on all outer-training data for selected epochs.
+   pretrain: 20 epochs
+   joint: 1 epochs
+   finetune: 5 epochs
+
+5. Learned hierarchical residual strengths
+   process_to_mixing_gate: +0.2093
+   process_to_mixing_gate_sd: +0.0110
+   process_to_mixing_gate_q10: +0.1942
+   process_to_mixing_gate_q50: +0.2126
+   process_to_mixing_gate_q90: +0.2212
+   process_mixing_to_curing_gate: +0.1690
+   process_mixing_to_curing_gate_sd: +0.0111
+   process_mixing_to_curing_gate_q10: +0.1567
+   process_mixing_to_curing_gate_q50: +0.1675
+   process_mixing_to_curing_gate_q90: +0.1844
+   Values near zero mean the measured block dominates; larger absolute values indicate stronger learned upstream correction.
+
+6. Hierarchical state predictability
+   R2_process_to_mixing_state: 0.1048
+   R2_process_mixing_to_curing_state: 0.2983
+   These scores support association/predictability, not causal identification.
+
+7. Latent-state interpretation
+   z1 strongest associations:
+      [curing] cure_early_crosslink_cv: r=-0.8606
+      [mixing] mix_Tq_stage1_initial_std: r=-0.6980
+      [mixing] mix_Tq_platform_cv: r=-0.5731
+      [curing] eng_t90_over_cure_time: r=+0.5694
+      [process] mix_speed_stage1: r=-0.4674
+      [process] mix_speed_stage2: r=-0.4674
+      [curing] cure_tan_delta_end: r=+0.4002
+      [process] cure_temp: r=-0.3766
+      [mixing] mix_TM1_d2_std: r=-0.3664
+   z2 strongest associations:
+      [curing] cure_early_crosslink_cv: r=+0.7780
+      [mixing] mix_Tq_stage1_initial_std: r=+0.6856
+      [mixing] mix_TM1_d2_std: r=+0.5701
+      [curing] cure_tan_delta_end: r=-0.5513
+      [curing] eng_t90_over_cure_time: r=-0.5090
+      [mixing] mix_Tq_platform_cv: r=+0.4723
+      [process] cure_temp: r=+0.3298
+      [process] mix_time: r=-0.1476
+      [process] cure_time_offset: r=-0.0746
+   z3 strongest associations:
+      [curing] cure_early_crosslink_cv: r=+0.8781
+      [mixing] mix_Tq_stage1_initial_std: r=+0.6692
+      [curing] eng_t90_over_cure_time: r=-0.6154
+      [mixing] mix_Tq_platform_cv: r=+0.4652
+      [process] mix_speed_stage1: r=+0.4463
+      [process] mix_speed_stage2: r=+0.4463
+      [process] cure_temp: r=+0.4236
+      [curing] cure_tan_delta_end: r=-0.4224
+      [mixing] mix_TM1_d2_std: r=+0.3576
+   z4 strongest associations:
+      [curing] cure_early_crosslink_cv: r=+0.7125
+      [mixing] mix_Tq_stage1_initial_std: r=+0.6805
+      [curing] eng_t90_over_cure_time: r=-0.5942
+      [curing] cure_tan_delta_end: r=-0.5765
+      [mixing] mix_TM1_d2_std: r=+0.5475
+      [mixing] mix_Tq_platform_cv: r=+0.4443
+      [process] cure_temp: r=+0.4285
+      [process] mix_time: r=-0.1926
+      [process] cure_time_offset: r=+0.0631
+
+8. Post-hoc symbolic equations
+   Latent-SR: hardness_ha = +72.5932 +2.5482*std[abs(z2)] -2.5482*std[z2] +0.918631*std[abs(z3)] -0.821659*std[sat(z4)] +0.773168*std[abs(z1)]
+   Frozen-Level-SR: hardness_ha = +72.5932 +2.84594*std[zC1] -2.17786*std[sat(zM1)] +1.82898*std[zP1] +1.03809*std[sat(zP1)] -0.667561*std[abs(zM1)] -0.326968*std[zM1] +0.169863*std[sat(zC1)]
+   Frozen-Hybrid-SR: hardness_ha = +72.5932 +2.93494*std[zM2*zC2] -2.7436*std[zP2] -2.68507*std[zM1] -2.61687*std[zM1*zC2] -0.983089*std[zM2*zC1] +0.689834*std[zM2^2] +0.420424*std[zC2^2]
+   Linked-SR: zM1_hat = +0.509114 +0.399071*std[sat(M:mix_Tq_stage1_initial_std)] +0.18118*std[sat(M:mix_Tq_platform_cv)] +0.0193677*std[M:mix_Tq_stage1_initial_std]
+   Linked-SR: zM2_hat = -0.137883 +0.428116*std[sat(M:mix_Tq_stage1_initial_std)] +0.329668*std[sat(M:mix_Tq_platform_cv)] +0.169052*std[M:mix_Tq_stage1_initial_std]
+   Linked-SR: zC1_hat = +0.0827374 +0.709161*std[sat(C:cure_tan_delta_end)] -0.361414*std[C:cure_early_crosslink_cv] -0.270915*std[C:cure_tan_delta_end]
+   Linked-SR: zC2_hat = -0.33191 -0.375303*std[sat(C:cure_tan_delta_end)] +0.203536*std[sat(C:cure_early_crosslink_cv)] +0.176869*std[C:cure_early_crosslink_cv]
+   Linked-SR: hardness_ha = +72.6471 +2.78106*std[sat(zC1)] -2.47371*std[abs(zM1)] +1.96026*std[abs(zM2)] +1.68509*std[abs(zP2)] +0.991375*std[sat(zP1)] +0.949027*std[zP1] +0.0745803*std[zP1*zM2]
+   Linked-SR: Safety rule: use chain mean only when all stage OOF checks pass, intermediate proxies stay within the train OOF envelope, and cross-chain predictive uncertainty is below threshold; otherwise fallback to direct frozen-level SR.
+   std[term] means the symbolic term is standardized using the training fit.
+
+9. Symbolic terms
+   zM2*zC2: coefficient=+2.93494; library=basic; symbolic-CV-RMSE=3.6665
+   zP2: coefficient=-2.7436; library=basic; symbolic-CV-RMSE=3.6665
+   zM1: coefficient=-2.68507; library=basic; symbolic-CV-RMSE=3.6665
+   zM1*zC2: coefficient=-2.61687; library=basic; symbolic-CV-RMSE=3.6665
+   zM2*zC1: coefficient=-0.983089; library=basic; symbolic-CV-RMSE=3.6665
+   zM2^2: coefficient=+0.689834; library=basic; symbolic-CV-RMSE=3.6665
+   zC2^2: coefficient=+0.420424; library=basic; symbolic-CV-RMSE=3.6665
+
+10. Bootstrap symbolic stability
+   zP2^2: selection=45.00%, positive-sign=77.78%, median=+1.6272, unstable
+   zM1*zC1: selection=45.00%, positive-sign=77.78%, median=+1.49, unstable
+   zM1: selection=45.00%, positive-sign=11.11%, median=-3.1185, unstable
+   zP1: selection=35.00%, positive-sign=100.00%, median=+2.3208, unstable
+   zM1*zM2: selection=35.00%, positive-sign=100.00%, median=+2.2848, unstable
+   zM2*zC2: selection=30.00%, positive-sign=100.00%, median=+3.3344, unstable
+   zM2^2: selection=30.00%, positive-sign=100.00%, median=+2.1989, unstable
+   abs(zM2): selection=30.00%, positive-sign=50.00%, median=+0.73672, unstable
+   abs(zC1): selection=25.00%, positive-sign=100.00%, median=+2.3409, unstable
+   zP1*zP2: selection=25.00%, positive-sign=20.00%, median=-0.29097, unstable
+   zP2: selection=25.00%, positive-sign=0.00%, median=-1.6929, unstable
+   zC1: selection=20.00%, positive-sign=75.00%, median=+2.041, unstable
+   sat(zP1): selection=20.00%, positive-sign=100.00%, median=+1.7987, unstable
+   zC2: selection=20.00%, positive-sign=25.00%, median=-0.39173, unstable
+   zP1*zM2: selection=20.00%, positive-sign=0.00%, median=-2.3853, unstable
+   zM1*zC2: selection=20.00%, positive-sign=0.00%, median=-3.3161, unstable
+   abs(zM1): selection=20.00%, positive-sign=0.00%, median=-7.5587, unstable
+   zC2^2: selection=15.00%, positive-sign=66.67%, median=+2.4696, unstable
+   zM1^2: selection=15.00%, positive-sign=66.67%, median=+0.06713, unstable
+   zM2: selection=15.00%, positive-sign=33.33%, median=-0.31421, unstable
+
+11. Interpretation boundary
+   - Z is inferred from measured process/response variables; it is not direct molecular structure.
+   - outer-CV metrics are predictive evidence; full-data equations are descriptive interpretation models.
+   - a physical label for z_i requires repeated feature/sign stability and domain consistency.
+
+12. Explicit hierarchical state equations (descriptive full-data model)
+   process -> mixing state: cross-validated R2=0.0279
+   mixing_state_PC1 = +5.4525e-08 -0.33219*std[cure_temp] +0.28697*std[mix_time] +0.19879*std[mix_temp] -0.17293*std[mix_speed_stage2] -0.17293*std[mix_speed_stage1] +0.043684*std[cure_pressure] -0.038108*std[cure_time_offset]
+   process + mixing -> curing state: cross-validated R2=0.4899
+   curing_state_PC1 = +1.4562e-08 -0.66176*std[mix_Tq_stage1_initial_std] -0.50871*std[cure_temp] -0.36602*std[mix_temp] -0.26924*std[mix_TM1_d2_std] -0.20812*std[mix_Tq_platform_cv] +0.13415*std[mix_time] -0.056483*std[cure_time_offset] -0.041879*std[mix_speed_stage2] -0.041879*std[mix_speed_stage1] +0.016687*std[cure_pressure]
+
+13. Level-wise XGB ablation
+   full_process_mixing_curing: R2=0.8071 ± 0.1219
+   process_only: R2=0.7828 ± 0.1323
+   process_plus_curing: R2=0.8278 ± 0.0920
+   process_plus_mixing: R2=0.7833 ± 0.1483
+   add mixing to process: delta_R2=+0.0005
+   add curing to process: delta_R2=+0.0450
+   add curing after mixing: delta_R2=+0.0238
+   full minus process: delta_R2=+0.0243
+
+14. Hierarchical VAE modality masking
+   mask curing: mean delta_R2=+0.2335; positive means performance deteriorated after masking.
+   mask mixing: mean delta_R2=+0.1215; positive means performance deteriorated after masking.
+   mask mixing_curing: mean delta_R2=+0.9260; positive means performance deteriorated after masking.
+   mask process: mean delta_R2=+0.3504; positive means performance deteriorated after masking.
+   mask process_mixing: mean delta_R2=+0.3908; positive means performance deteriorated after masking.
+
+15. Feature-selection stability
+   curing:
+      cure_early_crosslink_cv: 100.00%
+      eng_t90_over_cure_time: 100.00%
+      cure_tan_delta_end: 33.33%
+      cure_S_double_delta: 26.67%
+      eng_network_gain_per_final_torque: 13.33%
+      cure_G_double_delta: 6.67%
+      cure_G_double_max: 6.67%
+      cure_G_double_mean: 6.67%
+      cure_G_double_std: 6.67%
+      cure_S_double_end_mean: 6.67%
+      cure_S_double_mean: 6.67%
+   mixing:
+      mix_TM1_d2_std: 93.33%
+      mix_Tq_stage1_initial_std: 86.67%
+      mix_Tq_platform_cv: 46.67%
+      mix_Tq_stage1_initial_cv: 26.67%
+      mix_TM1_slope: 20.00%
+      mix_speed_mean: 13.33%
+      Tq_std: 6.67%
+      mix_TM1_stage2_loading_slope: 6.67%
+      mix_Tq_stage2_loading_slope: 6.67%
+      mix_Tq_stage3_dispersion_mean: 6.67%
+      mix_Tq_stage4_stabilization_max: 6.67%
+   process:
+      cure_pressure: 100.00%
+      cure_temp: 100.00%
+      cure_time_offset: 100.00%
+      mix_speed_stage1: 100.00%
+      mix_speed_stage2: 100.00%
+      mix_temp: 100.00%
+      mix_time: 100.00%
+
+16. Unified interpretation
+   Use the linked system rather than expanding it into one long polynomial:
+   H_M = E_M(X_M) + alpha_PM G_PM(H_P)
+   H_C = E_C(X_C) + alpha_MC G_MC(H_P,H_M)
+   Z = f_Z(H_P,H_M,H_C)
+   Y_head = f_NN(H_P,H_M,H_C,Z)
+   Y_symbolic = f_symbolic(Z)
+   The neural head measures maximum predictive value; the symbolic route measures the accuracy retained by a compact explicit equation.
+
+============================================================================================
+17. V10/V11 inherited safeguards
+============================================================================================
+Full-data OOF teacher: {"enabled": true, "xgb_oof_R2": 0.7811384590467929, "extratrees_oof_R2": 0.8260741493276346, "combined_oof_R2": 0.8168960987335513, "xgb_weight": 0.48880644479479596, "extratrees_weight": 0.5111935552052042, "threshold": 0.4, "folds": [{"teacher_fold": 0, "n_train": 58, "n_validation": 30, "validation_sample_ids": "10;14;157;2;204;215;216;218;222;223;225;226;229;232;234;237;241;243;249;252;28;3;36;43;46;50;65;93;98;99"}, {"teacher_fold": 1, "n_train": 59, "n_validation": 29, "validation_sample_ids": "101;129;131;205;206;208;211;212;213;214;23;246;247;250;26;34;42;49;5;51;70;72;73;83;85;86;87;88;96"}, {"teacher_fold": 2, "n_train": 59, "n_validation": 29, "validation_sample_ids": "100;127;13;132;16;201;219;221;235;236;248;251;32;33;37;39;4;41;47;54;6;62;66;75;82;84;92;94;95"}]}
+The VAE backbone is accuracy-first; symbolic gradients are late and scaled, and the stronger level proxies are refined from detached states.
+
+18. Explicit linked symbolic system
+   zM1_hat = +0.509114 +0.399071*std[sat(M:mix_Tq_stage1_initial_std)] +0.18118*std[sat(M:mix_Tq_platform_cv)] +0.0193677*std[M:mix_Tq_stage1_initial_std]
+   zM2_hat = -0.137883 +0.428116*std[sat(M:mix_Tq_stage1_initial_std)] +0.329668*std[sat(M:mix_Tq_platform_cv)] +0.169052*std[M:mix_Tq_stage1_initial_std]
+   zC1_hat = +0.0827374 +0.709161*std[sat(C:cure_tan_delta_end)] -0.361414*std[C:cure_early_crosslink_cv] -0.270915*std[C:cure_tan_delta_end]
+   zC2_hat = -0.33191 -0.375303*std[sat(C:cure_tan_delta_end)] +0.203536*std[sat(C:cure_early_crosslink_cv)] +0.176869*std[C:cure_early_crosslink_cv]
+   hardness_ha = +72.6471 +2.78106*std[sat(zC1)] -2.47371*std[abs(zM1)] +1.96026*std[abs(zM2)] +1.68509*std[abs(zP2)] +0.991375*std[sat(zP1)] +0.949027*std[zP1] +0.0745803*std[zP1*zM2]
+   Safety rule: use chain mean only when all stage OOF checks pass, intermediate proxies stay within the train OOF envelope, and cross-chain predictive uncertainty is below threshold; otherwise fallback to direct frozen-level SR.
+
+The linked system is an explicit predictive chain fitted only on training data in every outer fold. It complements, rather than replaces, the high-capacity VAE prediction head.
+
+
+============================================================================================
+19. V11 next-stage model audit
+============================================================================================
+Backbone: physics-block Masked-VAE with sample-adaptive scalar P→M and P+M→C residual gates. No loss forces gates to be large.
+Explanation branch: two detached proxy dimensions per level, trained with train-only OOF stage-increment targets and a separate frozen sparse symbolic objective.
+Safe Linked-SR mean fallback fraction: 22.19%.
+Safe Linked-SR mean stage OOF R2: PM=0.7310, MC=0.7423, Y=0.5632.
+The Safe Linked-SR route falls back to direct frozen Level-SR whenever a stage fails OOF validation, intermediate proxies extrapolate beyond the training envelope, or cross-chain uncertainty is excessive.
+All hierarchy-control values are train-only diagnostics. Outer-CV route metrics remain the formal predictive evidence.
+
+
+============================================================================================
+20. Fair seven-model paper benchmark
+============================================================================================
+PLS, RBF-SVR, nested-tuned ExtraTrees, nested-tuned XGBoost, validation-selected Plain MLP, hierarchical VAE head, and Latent-SR are evaluated on the same locked outer folds and the same fold-specific feature space.
+ExtraTrees uses a 12-trial, 3-fold inner search and a two-seed outer-train refit. The VAE uses a two-stage 3-fold search: architecture at beta_KL=5e-4, followed by beta_KL selection in {1e-4, 5e-4, 1e-3}.
+ExtraTrees: R2=0.8301 ± 0.1090; RMSE=2.8140; MAE=1.9719.
+Adaptive-gated Masked-VAE head: R2=0.8077 ± 0.1127; RMSE=2.9885; MAE=2.1466.
+XGBoost: R2=0.8071 ± 0.1219; RMSE=2.9703; MAE=2.0314.
+Latent-SR: R2=0.7708 ± 0.1334; RMSE=3.2721; MAE=2.4304.
+RBF-SVR: R2=0.6998 ± 0.2321; RMSE=3.6983; MAE=2.6114.
+Plain MLP: R2=0.6754 ± 0.2146; RMSE=3.8900; MAE=2.8059.
+PLS: R2=0.5713 ± 0.3558; RMSE=4.3387; MAE=3.1089.
+The seven-model benchmark is a fairness/necessity comparison. The primary mechanistic figures remain focused on ExtraTrees, XGBoost, VAE-head, Latent-SR, and Safe Linked-SR.
+All fold predictions, fold metrics, hyperparameter trials, best parameters, locked splits, selected features, gates, proxies, stage increments, Safe Linked diagnostics, and plot tables are saved so publication figures can be redesigned without retraining.
