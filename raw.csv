@@ -1,0 +1,4 @@
+#As the project data remain confidential at this stage, only two representative data entries are presented here.
+sample_id	mix_speed_raw	mix_time	mix_temp	cure_temp_raw	cure_time_raw	cure_pressure	hardness_ha
+1	20+40	6	50	150	t90+3	10	63.36666667
+2	20+40	6	50	160	t90+6	15	65.1
