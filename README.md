@@ -4,6 +4,7 @@
   The framework combines stage-wise feature selection, hierarchical latent representation learning, sample-adaptive gating, and explicit symbolic regression to characterize relationships among processing conditions, mixing responses, curing responses, and material properties, with Shore A hardness as the primary prediction target.
 
 **1. Curing_curve-1.csv**
+
   Raw experimental curing-curve data for Sample 1, containing time-dependent measurements recorded during the curing test.
   
 **2. Mixing_curve-1.csv**
