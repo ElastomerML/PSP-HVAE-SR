@@ -5,14 +5,19 @@
 
 **1. Curing_curve-1.csv**
   Raw experimental curing-curve data for Sample 1, containing time-dependent measurements recorded during the curing test.
+  
 **2. Mixing_curve-1.csv**
   Raw experimental mixing-curve data for Sample 1, containing time-dependent measurements recorded during the mixing process.
+  
 **3. data.csv**
   An example processed data record containing extracted experimental features, demonstrating the structured input format used for hierarchical representation learning and property prediction.
+  
 **4. hardness_ha_interpretability.txt**
   A modeling and interpretability report for Shore A hardness, including selected features, cross-validation results, hierarchical gating statistics, latent-state associations, symbolic regression equations, feature-selection stability, and model diagnostics.
+  
 **5. main-HierarchicalVAE_SR_Hardness.py**
   The main Python implementation of the hierarchical VAE–SR framework, covering stage-wise feature processing and selection, hierarchical representation learning, hardness prediction, symbolic regression, and model evaluation.
+  
 **6. raw.csv:**
   An example raw dataset containing two experimental records with specified mixing and curing conditions, illustrating the original processing parameters prior to feature extraction.
 Data Availability Note
